@@ -1,3 +1,5 @@
+require 'yaml'
+
 class Hangman
   attr_accessor :word_guess, :already_chosen, :tries_left
   attr_reader :word
@@ -35,7 +37,10 @@ class Hangman
   def letter_choice
     puts 'Which letter do you want to try?'
     letter = gets.chomp.downcase
-    if !('a'..'z').include?(letter)
+    if letter == 'save'
+      save(self)
+      exit
+    elsif !('a'..'z').include?(letter)
       puts 'You have to choose a letter!'
       letter_choice
     else
@@ -46,7 +51,7 @@ class Hangman
   def wrong(letter)
     @tries_left -= 1
     puts "'#{letter}' is not in the word!"
-    lost if @tries_left == 0
+    finish('lost') if @tries_left == 0
     puts "Try again!\n\n"
     turns
   end
@@ -55,16 +60,12 @@ class Hangman
     equal_indexs(letter).each do |index|
       @word_guess[index] = letter
     end
-    won unless @word_guess.include?('_')
+    finish('won') unless @word_guess.include?('_')
   end
 
-  def lost
-    puts "You lost the game! The word was '#{word}'"
-    play_again?
-  end
-
-  def won
-    puts "You won the game! The word was '#{word}'"
+  def finish(string)
+    puts "You #{string} the game! The word was '#{word}'"
+    File.delete('hangman_saved.yaml')
     play_again?
   end
 
@@ -90,18 +91,42 @@ def random_word
   words.sample.downcase
 end
 
-# starts a new game
+# starts game
 def start_game
-  game = Hangman.new
-  puts "Welcome to Hangman! :D\n\n\n"
-  game.turns
+  puts 'Welcome to Hangman! :D'
+  puts "If you want to save your game, input 'save' anytime.\n\n\n"
+  if !File.exist?('hangman_saved.yaml') || question == '1'
+    game = Hangman.new
+    game.turns
+  else
+    load
+  end
+end
+
+def question
+  puts 'Do you want to start a new game or load a saved one?'
+  puts '1 - New Game'
+  puts '2 - Load Game'
+  input = gets.chomp
+  if input == '1' || input == '2'
+    input
+  else
+    puts 'You have to insert "1" or "2"!'
+    question
+  end
+end
+
+def save(game)
+  yaml = YAML.dump(game)
+  File.open('hangman_saved.yaml', 'w') { |file| file.puts(yaml) }
 end
 
 # continues a game
-def continue_game
-
+def load
+  yaml = File.open('hangman_saved.yaml', 'r').read
+  game = YAML.load(yaml)
+  game.turns
 end
-
 
 def play_again?
   puts 'Do you want to play again?(Y/N)'
@@ -112,8 +137,5 @@ def play_again?
     exit
   end
 end
-
-
-
 
 start_game
